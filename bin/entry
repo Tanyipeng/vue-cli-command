@@ -1,0 +1,80 @@
+#!/usr/bin/env node
+
+const path = require('path');
+const fs = require('fs');
+
+// 处理核心命令行
+const program = require('commander');
+// 输出随机颜色
+const Printer = require('@darkobits/lolcatjs').default;
+// shelljs
+const shelljs = require('shelljs');
+// 改变字体颜色
+const chalk = require('chalk');
+// 跟用户进行交互
+const inquirer = require('inquirer');
+// loading
+const ora = require('ora');
+// 下载
+const download = require('download-git-repo');
+// 获取进程位置
+const processPath = process.cwd();
+// 获取version
+const input = fs.readFileSync(path.resolve(__dirname, './verson.txt'), 'utf8');
+// 下载的url
+const tmpUrl = 'direct:https://github.com/Tanyipeng/simple-vue-cli.git';
+
+const binHandler = {
+  init() {
+    inquirer
+      .prompt([{
+        type: 'text',
+        message: `请输入文件夹名称${chalk.gray('（vue-app）')}`,
+        name: 'dirname'
+      }])
+      .then(answers => {
+        const dirname = answers.dirname || 'vue-app';
+        const spinner = ora('👼下载初始化模板...');
+        const projectPath = `${processPath}/${dirname}`;
+        spinner.start();
+        shelljs.cd(processPath);
+        shelljs.rm('-rf', projectPath);
+        shelljs.mkdir(dirname);
+        download(tmpUrl, projectPath, {
+          clone: true
+        }, err => {
+          spinner.stop();
+          if (err) {
+            console.log(chalk.redBright('啊哦，下载失败啦🍂'));
+            process.exit(1);
+          } else {
+            console.log(chalk.greenBright('下载成功🍃'));
+            console.log(chalk.greenBright('cd'), chalk.greenBright(dirname));
+            console.log(chalk.greenBright('npm install'), chalk.green('or'), chalk.greenBright('yarn'));
+            console.log(chalk.greenBright('npm run dev'), chalk.green('or'), chalk.greenBright('yarn dev'));
+            // 修改name为用户的文件夹名称
+            shelljs.sed('-i', 'simple-vue-cli', dirname, `${projectPath}/package.json`);
+            process.exit(0);
+          }
+        })
+      })
+  }
+}
+
+// program.version
+program.version(Printer.fromString(input), '-v --version');
+program
+  .usage('[cmd] <options>')
+  .arguments('<cmd> [env]')
+  .action((cmd, otherParams) => {
+    const handler = binHandler[cmd];
+    if (handler == null) {
+      console.log(`${chalk.yellowBright('非常遗憾')} 【${chalk.redBright(cmd)}】 ${chalk.yellowBright('该命令暂未提供👻')}`);
+      process.exit(1);
+    } else {
+      handler();
+    }
+  })
+
+// program.command('init', 'init this project');
+program.parse(process.argv);
